@@ -548,6 +548,9 @@ static int brcmf_chip_cores_check(struct brcmf_chip_priv *ci)
 		case BCMA_CORE_ARM_CA7:
 			cpu_found = true;
 			break;
+		case BCMA_CORE_ARM_CA53:
+			cpu_found = true;
+			break;
 		default:
 			break;
 		}
