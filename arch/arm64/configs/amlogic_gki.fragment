@@ -64,7 +64,7 @@ CONFIG_WLAN_VENDOR_BROADCOM=y
 # Amlogic
 #
 CONFIG_SERIAL_MESON=m
-
+CONFIG_SERIAL_MESON_CONSOLE=y
 #
 # Amlogic drivers as modules
 #
