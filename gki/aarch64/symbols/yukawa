@@ -19,7 +19,6 @@
   __bitmap_and
   bitmap_free
   bitmap_zalloc
-  bit_wait
   bpf_trace_run1
   bpf_trace_run2
   bpf_trace_run3
@@ -333,7 +332,6 @@
   _find_next_zero_bit
   finish_wait
   firmware_request_nowarn
-  flush_dcache_page
   flush_delayed_work
   flush_work
   __flush_workqueue
@@ -383,7 +381,6 @@
   ida_destroy
   ida_free
   idr_alloc
-  idr_alloc_u32
   idr_destroy
   idr_find
   idr_for_each
@@ -402,10 +399,7 @@
   input_unregister_device
   ioremap_prot
   iounmap
-  iov_iter_bvec
-  iov_iter_extract_pages
   iov_iter_kvec
-  iov_iter_npages
   iov_iter_revert
   ip_route_output_flow
   __ipv6_addr_type
@@ -474,8 +468,6 @@
   log_post_write_mmio
   log_read_mmio
   log_write_mmio
-  match_int
-  match_token
   mdiobus_alloc_size
   mdiobus_free
   mdiobus_get_phy
@@ -585,7 +577,6 @@
   of_property_read_string
   of_property_read_string_helper
   of_property_read_variable_u32_array
-  out_of_line_wait_on_bit
   overflowuid
   page_pinner_inited
   __page_pinner_put_page
@@ -611,7 +602,6 @@
   pci_unregister_driver
   pci_write_config_dword
   pcpu_alloc_noprof
-  __percpu_down_read
   __per_cpu_offset
   perf_trace_buf_alloc
   perf_trace_run_bpf_submit
@@ -675,7 +665,6 @@
   _printk
   proc_create_net_data
   proc_create_net_single
-  proc_create_seq_private
   proc_doulongvec_minmax
   _proc_mkdir
   proto_register
@@ -877,7 +866,6 @@
   snd_soc_unregister_component
   snprintf
   sock_alloc_send_pskb
-  __sock_create
   sock_create_kern
   sock_efree
   sockfd_lookup
@@ -918,7 +906,6 @@
   strnlen
   strrchr
   strreplace
-  strsep
   strstr
   __sw_hweight16
   __sw_hweight32
@@ -935,7 +922,6 @@
   sysfs_remove_group
   system_freezable_wq
   system_power_efficient_wq
-  system_unbound_wq
   system_wq
   tasklet_kill
   __tasklet_schedule
@@ -944,7 +930,6 @@
   timer_delete
   timer_delete_sync
   timer_shutdown_sync
-  _trace_android_vh_record_pcpu_rwsem_starttime
   trace_event_buffer_commit
   trace_event_buffer_reserve
   trace_event_printf
@@ -1159,6 +1144,7 @@
 # required by bluetooth.ko
   aes_encrypt
   aes_expandkey
+  bit_wait
   cancel_work
   crypto_alloc_kpp
   crypto_ecdh_encode_key
@@ -1179,8 +1165,10 @@
   kvasprintf_const
   memcpy_and_pad
   ns_to_kernel_old_timeval
+  out_of_line_wait_on_bit
   overflowgid
   pid_vnr
+  proc_create_seq_private
   put_pid
   radix_tree_tagged
   __scm_destroy
@@ -1225,6 +1213,7 @@
   strchrnul
   strlcat
   strnstr
+  strsep
   wait_for_completion_interruptible
 
 # required by brcmutil.ko
@@ -1267,8 +1256,10 @@
   nla_find
   nla_reserve
   of_prop_next_u32
+  __sock_create
   sysfs_create_link
   sysfs_remove_link
+  system_unbound_wq
   trace_print_array_seq
   verify_pkcs7_signature
   wireless_nlevent_flush
@@ -1595,6 +1586,7 @@
   nvmem_cell_put
   of_irq_get_byname
   out_of_line_wait_on_bit_timeout
+  __percpu_down_read
   percpu_down_write
   percpu_free_rwsem
   __percpu_init_rwsem
@@ -1610,6 +1602,7 @@
   serdev_device_wait_until_sent
   serdev_device_write_buf
   serdev_device_write_flush
+  _trace_android_vh_record_pcpu_rwsem_starttime
   tty_driver_flush_buffer
   tty_ldisc_flush
   tty_set_termios
@@ -1733,6 +1726,7 @@
   vm_munmap
 
 # required by l2tp_core.ko
+  idr_alloc_u32
   idr_get_next_ul
   idr_replace
   inet6_csk_xmit
@@ -1934,11 +1928,16 @@
   iomem_resource
   nbcon_device_release
   nbcon_device_try_acquire
+  oops_in_progress
   sysrq_mask
   uart_add_one_port
+  uart_console_device
+  uart_console_write
   uart_get_baud_rate
+  uart_parse_options
   uart_register_driver
   uart_remove_one_port
+  uart_set_options
   uart_try_toggle_sysrq
   uart_unregister_driver
   uart_update_timeout
@@ -1946,73 +1945,6 @@
 
 # required by meson_wdt.ko
   watchdog_set_restart_priority
-
-# required by netfs.ko
-  balance_dirty_pages_ratelimited_flags
-  copy_page_from_iter_atomic
-  downgrade_write
-  down_read_interruptible
-  down_write_killable
-  errseq_set
-  fault_in_iov_iter_readable
-  filemap_dirty_folio
-  filemap_fdatawait_range
-  filemap_fdatawrite_range
-  filemap_fdatawrite_range_kick
-  __filemap_get_folio
-  filemap_invalidate_inode
-  filemap_range_has_page
-  filemap_read
-  __filemap_set_wb_err
-  filemap_write_and_wait_range
-  file_remove_privs
-  file_update_time
-  flush_dcache_folio
-  __folio_alloc_noprof
-  __folio_batch_release
-  folio_clear_dirty_for_io
-  folio_end_private_2
-  folio_end_writeback
-  __folio_lock_killable
-  folio_mark_dirty
-  folio_redirty_for_writepage
-  __folio_start_writeback
-  __folio_swap_cache_index
-  folio_unlock
-  folio_wait_private_2
-  folio_wait_private_2_killable
-  folio_wait_writeback_killable
-  generic_write_checks
-  __inode_attach_wb
-  inode_dio_finished
-  inode_dio_wait_interruptible
-  invalidate_inode_pages2_range
-  iov_iter_advance
-  iov_iter_folio_queue
-  iov_iter_zero
-  kiocb_write_and_wait
-  kmem_cache_size
-  mempool_alloc_noprof
-  mempool_alloc_slab
-  mempool_exit
-  mempool_free
-  mempool_free_slab
-  mempool_init_noprof
-  proc_mkdir
-  readahead_expand
-  remove_proc_subtree
-  seq_list_next
-  seq_list_start_head
-  set_page_dirty
-  touch_atime
-  unmap_mapping_range
-  unpin_user_page
-  vfs_fsync_range
-  wake_up_var
-  wbc_attach_and_unlock_inode
-  wbc_detach_inode
-  writeback_iter
-  xas_find
 
 # required by nfc.ko
   sock_no_ioctl
@@ -2675,7 +2607,10 @@
 
 # required by tls.ko
   check_zeroed_user
+  iov_iter_bvec
+  iov_iter_extract_pages
   iov_iter_get_pages2
+  iov_iter_npages
   memcg_sockets_enabled_key
   memory_cgrp_subsys_on_dfl_key
   skb_copy_header
@@ -2901,6 +2836,7 @@
   __cpuhp_state_remove_instance
   file_path
   filp_open_block
+  flush_dcache_page
   fs_bio_set
   get_swap_device
   get_task_mm
