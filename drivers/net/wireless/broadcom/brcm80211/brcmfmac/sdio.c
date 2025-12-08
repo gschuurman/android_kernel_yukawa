@@ -3957,6 +3957,9 @@ brcmf_sdio_probe_attach(struct brcmf_sdio *bus)
 	sdiodev = bus->sdiodev;
 	sdio_claim_host(sdiodev->func1);
 
+	/* Allow SDIO bus to stabilize before chip access */
+	msleep(100);
+
 	enum_base = brcmf_chip_enum_base(sdiodev->func1->device);
 
 	pr_debug("F1 signature read @0x%08x=0x%4x\n", enum_base,
