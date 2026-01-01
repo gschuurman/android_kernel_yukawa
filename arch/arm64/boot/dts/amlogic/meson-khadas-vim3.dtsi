@@ -336,6 +336,18 @@
 	};
 };
 
+&i2c3 {
+	status = "okay";
+	pinctrl-0 = <&i2c3_sda_a_pins>, <&i2c3_sck_a_pins>;
+	pinctrl-names = "default";
+
+	/* BH1750 Light Sensor */
+	light-sensor@23 {
+		compatible = "rohm,bh1750";
+		reg = <0x23>;
+	};
+};
+
 &i2c_AO {
 	status = "okay";
 	pinctrl-0 = <&i2c_ao_sck_pins>, <&i2c_ao_sda_pins>;
@@ -373,10 +385,19 @@
 	reset-gpios = <&gpio GPIOA_8 GPIO_ACTIVE_LOW>;
 };
 
+&periphs_pinctrl {
+    pwm_f_pins: pwm-f {
+        mux {
+            groups = "pwm_f_h";
+            function = "pwm_f";
+        };
+    };
+};
+
 &pwm_ef {
-	status = "okay";
-	pinctrl-0 = <&pwm_e_pins>;
-	pinctrl-names = "default";
+    status = "okay";
+    pinctrl-0 = <&pwm_e_pins>, <&pwm_f_pins>;
+    pinctrl-names = "default";
 };
 
 &saradc {
