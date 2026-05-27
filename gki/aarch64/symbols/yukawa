@@ -1094,6 +1094,19 @@
   vlan_vid_add
   vlan_vid_del
 
+# required by aes-neon-blk.ko
+  crypto_aes_inv_sbox
+  crypto_aes_sbox
+  crypto_register_shashes
+  crypto_register_skciphers
+  crypto_unregister_shashes
+  crypto_unregister_skciphers
+  kernel_neon_begin
+  kernel_neon_end
+  scatterwalk_ffwd
+  skcipher_walk_done
+  skcipher_walk_virt
+
 # required by amlogic-gxl-crypto.ko
   crypto_engine_alloc_init
   crypto_engine_exit
@@ -1234,9 +1247,14 @@
   __sock_tx_timestamp
 
 # required by cdc-acm.ko
+  __tty_port_tty_hangup
   tty_get_char_size
   usb_alloc_coherent
   usb_free_coherent
+
+# required by cdc_ether.ko
+  __traceiter_android_vh_is_rndis_enabled
+  __tracepoint_android_vh_is_rndis_enabled
 
 # required by cdc_ncm.ko
   usb_altnum_to_altsetting
@@ -1344,20 +1362,53 @@
   drm_probe_ddc
 
 # required by drm_display_helper.ko
+  __drm_atomic_helper_private_obj_duplicate_state
+  __drm_crtc_commit_free
+  __drm_debug
+  __drm_printfn_dbg
+  devm_backlight_device_register
+  drm_atomic_get_connector_state
+  drm_atomic_get_new_private_obj_state
+  drm_atomic_get_old_private_obj_state
+  drm_atomic_get_private_obj_state
+  drm_atomic_private_obj_fini
+  drm_atomic_private_obj_init
   drm_bridge_hpd_disable
   drm_bridge_hpd_enable
   drm_bridge_is_panel
+  drm_connector_register
+  drm_connector_unregister
+  drm_crtc_add_crc_entry
+  drm_crtc_commit_wait
+  drm_crtc_wait_one_vblank
+  drm_display_mode_from_cea_vic
+  drm_edid_dup
+  drm_edid_duplicate
+  drm_edid_get_monitor_name
   drm_edid_valid
   drm_hdmi_connector_get_output_format_name
   drm_kms_helper_connector_hotplug_event
+  drm_kms_helper_hotplug_event
+  drm_mode_object_put
+  drm_modeset_lock
+  drm_modeset_lock_single_interruptible
+  drm_modeset_unlock
+  drm_object_attach_property
+  drm_object_property_set_value
+  drm_panel_bridge_set_orientation
+  drm_property_create_enum
+  drm_sysfs_connector_property_event
   drmm_connector_hdmi_init
   drmm_connector_init
   drmm_kmalloc
-  drm_panel_bridge_set_orientation
+  guid_gen
+  guid_null
   hdmi_drm_infoframe_init
   hdmi_infoframe_pack
   hdmi_spd_infoframe_init
   i2c_transfer
+  print_hex_dump
+  request_firmware_direct
 
 # required by drm_dma_helper.ko
   dma_alloc_pages
@@ -1460,6 +1511,46 @@
 
 # required by dwmac-meson8b.ko
   of_get_phy_mode
+
+# required by efivarfs.ko
+  always_delete_dentry
+  blocking_notifier_chain_register
+  blocking_notifier_chain_unregister
+  d_alloc
+  drop_nlink
+  efi_status_to_err
+  efivar_get_next_variable
+  efivar_get_variable
+  efivar_is_available
+  efivar_lock
+  efivar_ops_nh
+  efivar_query_variable_info
+  efivar_set_variable_locked
+  efivar_supports_writes
+  efivar_unlock
+  fileattr_fill_flags
+  fs_param_is_gid
+  fs_param_is_uid
+  generic_delete_inode
+  get_next_ino
+  get_tree_single
+  guid_parse
+  inode_set_ctime_current
+  inode_set_flags
+  strncasecmp
+  ucs2_as_utf8
+  ucs2_strnlen
+  ucs2_strsize
+  ucs2_utf8size
+  unregister_filesystem
+  uuid_is_valid
+
+# required by exynos-hvm.ko
+  __arm_smccc_hvc
+  __copy_overflow
+  debugfs_lookup_and_remove
+  disable_percpu_irq
+  enable_percpu_irq
 
 # required by fat_test.ko
   fat_time_fat2unix
@@ -2092,6 +2183,8 @@
   __sk_receive_skb
   sk_setup_caps
 
+
+
 # required by ptp.ko
   debugfs_create_u32_array
   device_for_each_child_reverse
@@ -2198,6 +2291,7 @@
   regmap_register_patch
 
 # required by rfcomm.ko
+  __tty_port_tty_hangup
   tty_port_install
   tty_wakeup
 
@@ -2213,6 +2307,7 @@
 
 # required by rtl8150.ko
   __printk_ratelimit
+  __skb_pad
   usb_check_int_endpoints
   usb_control_msg_send
 
@@ -2355,6 +2450,26 @@
   unload_binder
   vm_insert_page
   zap_page_range_single
+  RUST_BINDER_LAYOUT
+  _RNvMNtCsdfZWD8DztAw_6kernel7id_poolNtB2_14ReallocRequest7realloc
+  _RNvMs0_NtCsdfZWD8DztAw_6kernel4pageNtB5_4Page3nid
+  _RNvXs3_NtCsdfZWD8DztAw_6kernel6bitmapNtB5_9BitmapVecNtNtNtCs3o2tGsuHyou_4core3ops4drop4Drop4drop
+  __traceiter_android_vh_rust_binder_looper_entry
+  __traceiter_android_vh_rust_binder_restore_priority
+  __traceiter_android_vh_rust_binder_set_priority
+  __tracepoint_android_vh_rust_binder_looper_entry
+  __tracepoint_android_vh_rust_binder_restore_priority
+  __tracepoint_android_vh_rust_binder_set_priority
+  _find_last_bit
+  fd_install
+  get_unused_fd_flags
+  list_lru_add
+  list_lru_del
+  lock_vma_under_rcu
+  put_unused_fd
+  rust_do_trace_android_vh_rust_binder_looper_entry
+  rust_do_trace_android_vh_rust_binder_restore_priority
+  rust_do_trace_android_vh_rust_binder_set_priority
 
 # required by sclk-div.ko
   clk_hw_round_rate
@@ -2366,6 +2481,82 @@
 
 # required by smsc.ko
   ethtool_puts
+
+# required by snd-hda-codec-hdmi.ko
+  __hda_codec_driver_register
+  __snd_hda_codec_cleanup_stream
+  _snd_hdac_read_parm
+  hda_codec_driver_unregister
+  is_jack_detectable
+  snd_array_free
+  snd_array_new
+  snd_ctl_notify
+  snd_device_free
+  snd_hda_codec_get_pincfg
+  snd_hda_codec_pcm_new
+  snd_hda_codec_set_power_to_all
+  snd_hda_codec_setup_stream
+  snd_hda_codec_update_widgets
+  snd_hda_create_dig_out_ctls
+  snd_hda_ctl_add
+  snd_hda_get_dev_select
+  snd_hda_get_num_devices
+  snd_hda_jack_detect_enable
+  snd_hda_jack_detect_enable_callback_mst
+  snd_hda_jack_pin_sense
+  snd_hda_jack_report_sync
+  snd_hda_jack_set_dirty_all
+  snd_hda_jack_tbl_get_from_tag
+  snd_hda_jack_tbl_get_mst
+  snd_hda_multi_out_dig_close
+  snd_hda_multi_out_dig_open
+  snd_hda_multi_out_dig_prepare
+  snd_hda_sequence_write
+  snd_hda_set_dev_select
+  snd_hda_spdif_ctls_assign
+  snd_hda_spdif_ctls_unassign
+  snd_hda_spdif_out_of_nid
+  snd_hdac_add_chmap_ctls
+  snd_hdac_channel_allocation
+  snd_hdac_check_power_state
+  snd_hdac_chmap_to_spk_mask
+  snd_hdac_codec_read
+  snd_hdac_codec_write
+  snd_hdac_get_active_channels
+  snd_hdac_get_ch_alloc_from_ca
+  snd_hdac_get_connections
+  snd_hdac_get_stream_stripe_ctl
+  snd_hdac_get_sub_nodes
+  snd_hdac_power_down_pm
+  snd_hdac_power_up_pm
+  snd_hdac_print_channel_allocation
+  snd_hdac_query_supported_pcm
+  snd_hdac_register_chmap_ops
+  snd_hdac_regmap_add_vendor_verb
+  snd_hdac_regmap_sync
+  snd_hdac_regmap_write_raw
+  snd_hdac_setup_channel_mapping
+  snd_hdac_spk_to_chmap
+  snd_hdac_stream_format
+  snd_info_create_card_entry
+  snd_info_free_entry
+  snd_info_get_line
+  snd_jack_new
+  snd_jack_report
+  snd_pci_quirk_lookup
+  snd_pcm_alt_chmaps
+  snd_print_pcm_bits
+
+# required by snd-soc-audio-graph-card.ko
+  of_graph_get_port_parent
+  of_graph_get_remote_endpoint
+  of_node_name_eq
+  of_phandle_iterator_init
+  of_phandle_iterator_next
+  snd_soc_find_dai_with_mutex
+  snd_soc_of_parse_node_prefix
+  snd_soc_of_parse_tdm_slot
+  snd_soc_pm_ops
 
 # required by snd-soc-hdmi-codec.ko
   hdmi_audio_infoframe_init
@@ -2411,6 +2602,31 @@
 
 # required by snd-soc-meson-g12a-toacodec.ko
   regmap_field_read
+
+# required by snd-soc-simple-card-utils.ko
+  devm_get_clk_from_child
+  devm_kvasprintf
+  gpiod_get_optional
+  of_graph_get_endpoint_count
+  of_graph_get_port_parent
+  of_node_name_eq
+  of_property_count_elems_of_size
+  snd_soc_card_jack_new
+  snd_soc_card_jack_new_pins
+  snd_soc_component_get_jack_type
+  snd_soc_component_set_jack
+  snd_soc_component_set_sysclk
+  snd_soc_copy_dai_args
+  snd_soc_dai_active
+  snd_soc_dai_name_get
+  snd_soc_daifmt_clock_provider_from_bitmap
+  snd_soc_dlc_use_cpu_as_platform
+  snd_soc_get_dai_id
+  snd_soc_get_dai_via_args
+  snd_soc_get_dlc
+  snd_soc_jack_add_gpios
+  snd_soc_of_parse_pin_switches
+  snd_soc_runtime_calc_hw
 
 # required by soc-topology-test.ko
   snd_soc_add_component
@@ -2658,6 +2874,7 @@
   usb_string
 
 # required by usbserial.ko
+  __tty_port_tty_hangup
   driver_attach
   schedule_timeout_interruptible
   tty_hangup
@@ -2822,6 +3039,15 @@
   rtnl_configure_link
   rtnl_create_link
 
+# required by xhci-pci-renesas.ko
+  pci_dev_get
+  pci_dev_put
+  pci_write_config_byte
+  usb_hcd_pci_pm_ops
+  usb_hcd_pci_shutdown
+  xhci_pci_common_probe
+  xhci_pci_remove
+
 # required by zram.ko
   __bio_add_page
   bio_alloc_bioset
@@ -2829,6 +3055,7 @@
   bio_endio
   bio_end_io_acct_remapped
   bio_init
+  bio_put
   bio_start_io_acct
   __blk_alloc_disk
   contpte_ptep_get
@@ -2867,6 +3094,7 @@
   submit_bio_wait
   sync_blockdev
   sysfs_streq
+  system_highpri_wq
   walk_page_range
   zstd_cctx_workspace_bound
   zstd_compress_cctx
