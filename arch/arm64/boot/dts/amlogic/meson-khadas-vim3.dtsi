@@ -572,5 +572,6 @@
 
 &usb {
 	status = "okay";
-	dr_mode = "otg";
+	dr_mode = "host";
+	vbus-supply = <&usb_pwr>;
 };
