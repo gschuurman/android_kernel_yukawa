@@ -572,6 +572,5 @@
 
 &usb {
 	status = "okay";
-	dr_mode = "host";
-	vbus-supply = <&usb_pwr>;
+	dr_mode = "peripheral";
 };
