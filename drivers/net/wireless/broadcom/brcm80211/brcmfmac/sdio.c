@@ -36,8 +36,8 @@
 #include "common.h"
 #include "bcdc.h"
 
-#define DCMD_RESP_TIMEOUT	msecs_to_jiffies(2500)
-#define CTL_DONE_TIMEOUT	msecs_to_jiffies(2500)
+#define DCMD_RESP_TIMEOUT	msecs_to_jiffies(5000)
+#define CTL_DONE_TIMEOUT	msecs_to_jiffies(5000)
 
 /* watermark expressed in number of words */
 #define DEFAULT_F2_WATERMARK    0x8
@@ -3958,6 +3958,9 @@ brcmf_sdio_probe_attach(struct brcmf_sdio *bus)
 	sdiodev = bus->sdiodev;
 	sdio_claim_host(sdiodev->func1);
 
+	/* Allow SDIO bus to stabilize before chip access */
+	msleep(100);
+
 	enum_base = brcmf_chip_enum_base(sdiodev->func1->device);
 
 	pr_debug("F1 signature read @0x%08x=0x%4x\n", enum_base,
@@ -4237,6 +4240,9 @@ static void brcmf_sdio_firmware_callback(struct device *dev, int err,
 	bus->sdcnt.tickcnt = 0;
 	brcmf_sdio_wd_timer(bus, true);
 
+	/* Wait for firmware to complete initialization after download */
+	msleep(100);
+
 	sdio_claim_host(sdiod->func1);
 
 	/* Make sure backplane clock is on, needed to generate F2 interrupt */
@@ -4261,6 +4267,9 @@ static void brcmf_sdio_firmware_callback(struct device *dev, int err,
 	/* Enable function 2 (frame transfers) */
 	brcmf_sdiod_writel(sdiod, core->base + SD_REG(tosbmailboxdata),
 			   SDPCM_PROT_VERSION << SMB_DATA_VERSION_SHIFT, NULL);
+
+	/* Allow device to process protocol version before enabling F2 */
+	msleep(50);
 
 	err = sdio_enable_func(sdiod->func2);
 
