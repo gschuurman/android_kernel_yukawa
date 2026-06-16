@@ -1,0 +1,55 @@
+name: Mirror GKI upstream
+
+# Mirrors the Android Common Kernel (GKI) android16-6.12 branch and its
+# release tags from android.googlesource.com into this fork, so new upstream
+# activity is visible here without manual fetching.
+#
+#   * Branch  android16-6.12        -> branch  gki-upstream   (force-updated to tip)
+#   * Tags    android16-6.12.*_r00  -> pushed as-is
+#
+# This is a pure mirror: it does NOT touch lineage-23.0 or your local patches.
+# To pick up a new GKI release onto your patch branch, rebase lineage-23.0 onto
+# the new tag, e.g.:
+#   git rebase --onto android16-6.12.<N>_r00 <old-base> lineage-23.0
+
+on:
+  schedule:
+    # Daily at 06:00 UTC. Scheduled runs only fire from the default branch.
+    - cron: '0 6 * * *'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: mirror-gki
+  cancel-in-progress: false
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout fork (full history for incremental upstream fetch)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Mirror android16-6.12 branch and release tags
+        run: |
+          set -euo pipefail
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git remote add gki https://android.googlesource.com/kernel/common 2>/dev/null || true
+
+          # Incremental: shares history with this fork, so only the delta is fetched.
+          git fetch --tags gki android16-6.12
+
+          # Update the mirror branch to the upstream tip.
+          git push origin "gki/android16-6.12:refs/heads/gki-upstream" --force
+
+          # Push any new release tags (never overwrite existing ones).
+          git push origin --tags --no-force 2>&1 | tee /tmp/tagpush.log || true
+
+          echo "Upstream tip: $(git rev-parse --short gki/android16-6.12)"
+          echo "Latest release tag: $(git tag --list 'android16-6.12.*_r00' | sort -V | tail -1)"
