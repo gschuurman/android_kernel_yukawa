@@ -108,6 +108,14 @@
 };
  */
 
+/*
+ * SDIO WiFi fixes for VIM3L BCM4359:
+ * The chip sometimes fails with "MMIO read failed: 0xffffffff" due to
+ * timing issues on the SDIO bus. Reduce speed and disable UHS modes.
+ */
 &sd_emmc_a {
-	sd-uhs-sdr50;
+	/delete-property/ sd-uhs-sdr50;
+	/delete-property/ sd-uhs-sdr104;
+	max-frequency = <25000000>;
+	no-1-8-v;
 };
