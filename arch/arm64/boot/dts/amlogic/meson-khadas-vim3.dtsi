@@ -275,17 +275,35 @@
 
 &cpu_thermal {
 	trips {
-		cpu_active: cpu-active {
-			temperature = <80000>; /* millicelsius */
-			hysteresis = <2000>; /* millicelsius */
+		cpu_fan_low: cpu-fan-low {
+			temperature = <45000>; /* millicelsius */
+			hysteresis = <3000>; /* millicelsius */
+			type = "active";
+		};
+		cpu_fan_med: cpu-fan-med {
+			temperature = <55000>; /* millicelsius */
+			hysteresis = <3000>; /* millicelsius */
+			type = "active";
+		};
+		cpu_fan_high: cpu-fan-high {
+			temperature = <65000>; /* millicelsius */
+			hysteresis = <3000>; /* millicelsius */
 			type = "active";
 		};
 	};
 
 	cooling-maps {
-		map {
-			trip = <&cpu_active>;
-			cooling-device = <&khadas_mcu THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
+		map0 {
+			trip = <&cpu_fan_low>;
+			cooling-device = <&khadas_mcu 1 1>;
+		};
+		map1 {
+			trip = <&cpu_fan_med>;
+			cooling-device = <&khadas_mcu 2 2>;
+		};
+		map2 {
+			trip = <&cpu_fan_high>;
+			cooling-device = <&khadas_mcu 3 3>;
 		};
 	};
 };
@@ -373,9 +391,18 @@
 	reset-gpios = <&gpio GPIOA_8 GPIO_ACTIVE_LOW>;
 };
 
+&periphs_pinctrl {
+    pwm_f_pins: pwm-f {
+        mux {
+            groups = "pwm_f_h";
+            function = "pwm_f";
+        };
+    };
+};
+
 &pwm_ef {
 	status = "okay";
-	pinctrl-0 = <&pwm_e_pins>;
+	pinctrl-0 = <&pwm_e_pins>, <&pwm_f_h_pins>;
 	pinctrl-names = "default";
 };
 
