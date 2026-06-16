@@ -1232,22 +1232,32 @@ pkg_install(
 
 _AMLOGIC_MODULE_OUTS = [
     # keep sorted
+    "drivers/bcma/bcma.ko",
     "drivers/char/hw_random/meson-rng.ko",
     "drivers/clk/clk-pwm.ko",
     "drivers/clk/meson/axg.ko",
     "drivers/clk/meson/axg-aoclk.ko",
     "drivers/clk/meson/axg-audio.ko",
     "drivers/clk/meson/clk-cpu-dyndiv.ko",
+    "drivers/clk/meson/clk-dualdiv.ko",
+    "drivers/clk/meson/clk-mpll.ko",
     "drivers/clk/meson/clk-phase.ko",
+    "drivers/clk/meson/clk-pll.ko",
+    "drivers/clk/meson/clk-regmap.ko",
     "drivers/clk/meson/g12a.ko",
     "drivers/clk/meson/g12a-aoclk.ko",
     "drivers/clk/meson/gxbb.ko",
     "drivers/clk/meson/gxbb-aoclk.ko",
     "drivers/clk/meson/meson-aoclk.ko",
+    "drivers/clk/meson/meson-clkc-utils.ko",
     "drivers/clk/meson/meson-eeclk.ko",
     "drivers/clk/meson/sclk-div.ko",
     "drivers/clk/meson/vclk.ko",
+    "drivers/clk/meson/vid-pll-div.ko",
     "drivers/crypto/amlogic/amlogic-gxl-crypto.ko",
+    "drivers/cpufreq/cpufreq-dt.ko",
+    "drivers/dma-buf/heaps/cma_heap.ko",
+    "drivers/dma-buf/heaps/system_heap.ko",
     "drivers/firmware/meson/meson_sm.ko",
     "drivers/gpu/drm/bridge/display-connector.ko",
     "drivers/gpu/drm/bridge/synopsys/dw-hdmi.ko",
@@ -1260,6 +1270,8 @@ _AMLOGIC_MODULE_OUTS = [
     "drivers/gpu/drm/meson/meson-drm.ko",
     "drivers/gpu/drm/meson/meson_dw_hdmi.ko",
     "drivers/gpu/drm/meson/meson_dw_mipi_dsi.ko",
+    "drivers/gpu/drm/panfrost/panfrost.ko",
+    "drivers/gpu/drm/scheduler/gpu-sched.ko",
     "drivers/i2c/busses/i2c-meson.ko",
     "drivers/iio/adc/meson_saradc.ko",
     "drivers/irqchip/irq-meson-gpio.ko",
@@ -1273,38 +1285,34 @@ _AMLOGIC_MODULE_OUTS = [
     "drivers/mmc/core/pwrseq_simple.ko",
     "drivers/mmc/host/meson-gx-mmc.ko",
     "drivers/net/ethernet/stmicro/stmmac/dwmac-generic.ko",
-    "drivers/net/ethernet/stmicro/stmmac/dwmac-ipq806x.ko",
     "drivers/net/ethernet/stmicro/stmmac/dwmac-meson.ko",
     "drivers/net/ethernet/stmicro/stmmac/dwmac-meson8b.ko",
-    "drivers/net/ethernet/stmicro/stmmac/dwmac-qcom-ethqos.ko",
-    "drivers/net/ethernet/stmicro/stmmac/dwmac-sun8i.ko",
-    "drivers/net/ethernet/stmicro/stmmac/dwmac-sunxi.ko",
     "drivers/net/ethernet/stmicro/stmmac/stmmac.ko",
     "drivers/net/ethernet/stmicro/stmmac/stmmac-platform.ko",
     "drivers/net/mdio/mdio-mux.ko",
     "drivers/net/mdio/mdio-mux-meson-g12a.ko",
-    "drivers/net/mdio/mdio-mux-meson-gxl.ko",
     "drivers/net/pcs/pcs_xpcs.ko",
     "drivers/net/phy/meson-gxl.ko",
     "drivers/net/phy/realtek.ko",
     "drivers/net/phy/smsc.ko",
+    "drivers/net/wireless/broadcom/b43/b43.ko",
+    "drivers/net/wireless/broadcom/brcm80211/brcmfmac/brcmfmac.ko",
+    "drivers/net/wireless/broadcom/brcm80211/brcmutil/brcmutil.ko",
     "drivers/pci/controller/dwc/pci-meson.ko",
+    "drivers/phy/amlogic/phy-meson-axg-mipi-dphy.ko",
     "drivers/phy/amlogic/phy-meson-axg-mipi-pcie-analog.ko",
     "drivers/phy/amlogic/phy-meson-axg-pcie.ko",
+    "drivers/phy/amlogic/phy-meson-g12a-mipi-dphy-analog.ko",
     "drivers/phy/amlogic/phy-meson-g12a-usb2.ko",
     "drivers/phy/amlogic/phy-meson-g12a-usb3-pcie.ko",
     "drivers/phy/amlogic/phy-meson-gxl-usb2.ko",
     "drivers/phy/amlogic/phy-meson8b-usb2.ko",
-    "drivers/pinctrl/meson/pinctrl-amlogic-c3.ko",
-    "drivers/pinctrl/meson/pinctrl-amlogic-t7.ko",
     "drivers/pinctrl/meson/pinctrl-meson.ko",
-    "drivers/pinctrl/meson/pinctrl-meson-a1.ko",
     "drivers/pinctrl/meson/pinctrl-meson-axg.ko",
     "drivers/pinctrl/meson/pinctrl-meson-axg-pmx.ko",
     "drivers/pinctrl/meson/pinctrl-meson-g12a.ko",
     "drivers/pinctrl/meson/pinctrl-meson-gxbb.ko",
     "drivers/pinctrl/meson/pinctrl-meson-gxl.ko",
-    "drivers/pinctrl/meson/pinctrl-meson-s4.ko",
     "drivers/pinctrl/meson/pinctrl-meson8-pmx.ko",
     "drivers/pmdomain/amlogic/meson-ee-pwrc.ko",
     "drivers/pmdomain/amlogic/meson-secure-pwrc.ko",
@@ -1317,11 +1325,15 @@ _AMLOGIC_MODULE_OUTS = [
     "drivers/soc/amlogic/meson-clk-measure.ko",
     "drivers/spi/spi-meson-spicc.ko",
     "drivers/spi/spi-meson-spifc.ko",
+    "drivers/ssb/ssb.ko",
     "drivers/thermal/amlogic_thermal.ko",
     "drivers/thermal/khadas_mcu_fan.ko",
     "drivers/tty/serial/meson_uart.ko",
     "drivers/usb/dwc2/dwc2.ko",
     "drivers/usb/dwc3/dwc3-meson-g12a.ko",
+    "lib/math/cordic.ko",
+    "net/mac80211/mac80211.ko",
+    "net/wireless/cfg80211.ko",
     "sound/soc/codecs/snd-soc-dmic.ko",
     "sound/soc/codecs/snd-soc-hdmi-codec.ko",
     "sound/soc/codecs/snd-soc-spdif-rx.ko",
@@ -1369,6 +1381,7 @@ kernel_build(
     ],
     arch = "arm64",
     defconfig = "arch/arm64/configs/gki_defconfig",
+    kmi_symbol_list = "//common:gki/aarch64/symbols/yukawa",
     make_goals = [
         "Image",
         "modules",
@@ -1380,7 +1393,7 @@ kernel_build(
     makefile = ":Makefile",
     module_outs = get_gki_modules_list("arm64") + get_kunit_modules_list("arm64") + _AMLOGIC_MODULE_OUTS + _AMLOGIC_WATCHDOG_MODULE_OUTS,
     pre_defconfig_fragments = ["arch/arm64/configs/amlogic_gki.fragment"],
-    visibility = ["//visibility:private"],
+    visibility = ["//visibility:public"],
 )
 
 kernel_build(
@@ -1400,6 +1413,7 @@ kernel_build(
     ],
     arch = "arm64",
     defconfig = "arch/arm64/configs/gki_defconfig",
+    kmi_symbol_list = "//common:gki/aarch64/symbols/yukawa",
     make_goals = [
         "Image",
         "modules",
@@ -1409,9 +1423,14 @@ kernel_build(
         "amlogic/meson-sm1-khadas-vim3l.dtb",
     ],
     makefile = ":Makefile",
-    module_outs = get_gki_modules_list("arm64") + get_kunit_modules_list("arm64") + _AMLOGIC_MODULE_OUTS,
+    module_outs = get_gki_modules_list("arm64") + get_kunit_modules_list("arm64") + _AMLOGIC_MODULE_OUTS + _AMLOGIC_WATCHDOG_MODULE_OUTS,
     pre_defconfig_fragments = ["arch/arm64/configs/amlogic_gki.fragment"],
-    visibility = ["//visibility:private"],
+    visibility = ["//visibility:public"],
+)
+
+kernel_abi(
+    name = "yukawa_abi",
+    kernel_build = ":yukawa",
 )
 
 alias(
@@ -1420,19 +1439,19 @@ alias(
         "//build/kernel/kleaf:kgdb_is_true": "yukawa_with_kgdb",
         "//conditions:default": "yukawa_no_kgdb",
     }),
-    visibility = ["//visibility:private"],
+    visibility = ["//visibility:public"],
 )
 
 kernel_modules_install(
     name = "yukawa_modules_install",
     kernel_build = ":yukawa",
-    visibility = ["//visibility:private"],
+    visibility = ["//visibility:public"],
 )
 
 initramfs(
     name = "yukawa_initramfs",
     kernel_modules_install = ":yukawa_modules_install",
-    visibility = ["//visibility:private"],
+    visibility = ["//visibility:public"],
 )
 
 pkg_files(
@@ -1443,13 +1462,13 @@ pkg_files(
         ":yukawa_modules_install",
     ],
     strip_prefix = strip_prefix.files_only(),
-    visibility = ["//visibility:private"],
+    visibility = ["//visibility:public"],
 )
 
 pkg_install(
     name = "yukawa_dist",
     srcs = [":yukawa_dist_files"],
-    visibility = ["//visibility:private"],
+    visibility = ["//visibility:public"],
     destdir = "out/yukawa/dist",
 )
 
