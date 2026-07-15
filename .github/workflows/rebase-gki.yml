@@ -1,0 +1,85 @@
+name: Weekly GKI rebase
+
+# Keeps lineage-23.0 as [latest android16-6.12-lts tip] + [yukawa customization commit].
+# Every run: fetch the current upstream tip, diff it against the base this branch was
+# last rebased onto, and if it moved, re-apply the yukawa commit on top and force-push.
+# On conflict, the branch is left untouched and an issue is filed for a manual rebase.
+
+on:
+  schedule:
+    - cron: '0 8 * * 1' # Monday 08:00 UTC
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+  issues: write
+
+env:
+  UPSTREAM_URL: https://android.googlesource.com/kernel/common
+  UPSTREAM_BRANCH: android16-6.12-lts
+  BRANCH: lineage-23.0
+
+jobs:
+  rebase:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch (tip + parent)
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.BRANCH }}
+          fetch-depth: 2
+
+      - name: Configure git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Fetch upstream GKI tip
+        run: git fetch --depth=1 "$UPSTREAM_URL" "$UPSTREAM_BRANCH"
+
+      - name: Check for upstream movement
+        id: check
+        run: |
+          old_base=$(git rev-parse HEAD~1)
+          new_base=$(git rev-parse FETCH_HEAD)
+          echo "old_base=$old_base" >> "$GITHUB_OUTPUT"
+          echo "new_base=$new_base" >> "$GITHUB_OUTPUT"
+          if [ "$old_base" = "$new_base" ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Re-apply yukawa commit onto new tip
+        if: steps.check.outputs.changed == 'true'
+        id: rebase
+        run: |
+          git format-patch -1 HEAD --stdout > /tmp/yukawa.patch
+          git checkout --detach "${{ steps.check.outputs.new_base }}"
+          if git am /tmp/yukawa.patch; then
+            echo "conflict=false" >> "$GITHUB_OUTPUT"
+          else
+            git am --abort
+            echo "conflict=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Push updated branch
+        if: steps.check.outputs.changed == 'true' && steps.rebase.outputs.conflict == 'false'
+        run: git push --force origin "HEAD:${{ env.BRANCH }}"
+
+      - name: File issue on conflict
+        if: steps.check.outputs.changed == 'true' && steps.rebase.outputs.conflict == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue create \
+            --repo "${{ github.repository }}" \
+            --title "Weekly GKI rebase failed: manual rebase needed onto ${{ steps.check.outputs.new_base }}" \
+            --body "Rebasing the yukawa commit from ${{ steps.check.outputs.old_base }} onto ${{ env.UPSTREAM_BRANCH }}@${{ steps.check.outputs.new_base }} produced conflicts. \`${{ env.BRANCH }}\` was left untouched. Rebase manually:
+
+          \`\`\`
+          git fetch $UPSTREAM_URL $UPSTREAM_BRANCH
+          git rebase --onto FETCH_HEAD ${{ steps.check.outputs.old_base }} ${{ env.BRANCH }}
+          # resolve conflicts, then:
+          git push --force origin ${{ env.BRANCH }}
+          \`\`\`"
