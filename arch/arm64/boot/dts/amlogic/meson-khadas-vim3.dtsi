@@ -375,7 +375,10 @@
 
 &pwm_ef {
 	status = "okay";
-	pinctrl-0 = <&pwm_e_pins>;
+	/* pwm_f_h_pins muxes PWM_F on the GPIO header for the VHAL-driven
+	 * backlight (vendor/gschuurman/vehicle_interfaces/automotive/vhal,
+	 * pwm1); dropped by the 2026-07 GKI rebase squash, restored here. */
+	pinctrl-0 = <&pwm_e_pins>, <&pwm_f_h_pins>;
 	pinctrl-names = "default";
 };
 
