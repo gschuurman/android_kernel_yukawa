@@ -1,9 +1,16 @@
 name: Weekly GKI rebase
 
-# Keeps lineage-23.0 as [latest android16-6.12-lts tip] + [yukawa customization commit].
-# Every run: fetch the current upstream tip, diff it against the base this branch was
-# last rebased onto, and if it moved, re-apply the yukawa commit on top and force-push.
-# On conflict, the branch is left untouched and an issue is filed for a manual rebase.
+# Keeps lineage-23.0 as [latest android16-6.12-lts tip] + [every fork commit].
+# The fork is NOT one squash commit -- it's a short stack of individually
+# authored commits (DTS/config customizations, CI infra, ...). `.gki-fork-base`
+# records the SHA of the last pure-upstream commit; everything after it, up
+# to HEAD, is "the fork". Every run: fetch the current upstream tip, and if
+# it moved, replay the *entire* fork-base..HEAD range onto it (not just the
+# last commit -- see incident 2026-07-16, where format-patch -1 HEAD silently
+# dropped everything except the newest fork commit). After a clean replay,
+# verify no line the fork range added went missing (verify_rebase.py), bump
+# the marker, and push. On conflict or content loss, the branch is left
+# untouched and an issue is filed for a manual rebase.
 
 on:
   schedule:
@@ -18,16 +25,17 @@ env:
   UPSTREAM_URL: https://android.googlesource.com/kernel/common
   UPSTREAM_BRANCH: android16-6.12-lts
   BRANCH: lineage-23.0
+  BASE_MARKER: .gki-fork-base
 
 jobs:
   rebase:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout branch (tip + parent)
+      - name: Checkout branch
         uses: actions/checkout@v4
         with:
           ref: ${{ env.BRANCH }}
-          fetch-depth: 2
+          fetch-depth: 0
 
       - name: Configure git identity
         run: |
@@ -40,7 +48,7 @@ jobs:
       - name: Check for upstream movement
         id: check
         run: |
-          old_base=$(git rev-parse HEAD~1)
+          old_base=$(cat "$BASE_MARKER")
           new_base=$(git rev-parse FETCH_HEAD)
           echo "old_base=$old_base" >> "$GITHUB_OUTPUT"
           echo "new_base=$new_base" >> "$GITHUB_OUTPUT"
@@ -50,36 +58,55 @@ jobs:
             echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Re-apply yukawa commit onto new tip
+      - name: Re-apply the full fork commit range onto new tip
         if: steps.check.outputs.changed == 'true'
         id: rebase
         run: |
-          git format-patch -1 HEAD --stdout > /tmp/yukawa.patch
-          git checkout --detach "${{ steps.check.outputs.new_base }}"
-          if git am /tmp/yukawa.patch; then
+          old_base="${{ steps.check.outputs.old_base }}"
+          new_base="${{ steps.check.outputs.new_base }}"
+          git diff "$old_base" HEAD -- . ":(exclude)$BASE_MARKER" > /tmp/fork.diff
+          git format-patch "$old_base..HEAD" --stdout > /tmp/fork.patch
+          git checkout --detach "$new_base"
+          if git am /tmp/fork.patch; then
             echo "conflict=false" >> "$GITHUB_OUTPUT"
           else
             git am --abort
             echo "conflict=true" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Push updated branch
+      - name: Verify no fork content was silently dropped
         if: steps.check.outputs.changed == 'true' && steps.rebase.outputs.conflict == 'false'
-        run: git push --force origin "HEAD:${{ env.BRANCH }}"
+        id: verify
+        run: |
+          if python3 .github/scripts/verify_rebase.py /tmp/fork.diff; then
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+          fi
 
-      - name: File issue on conflict
-        if: steps.check.outputs.changed == 'true' && steps.rebase.outputs.conflict == 'true'
+      - name: Bump base marker and push
+        if: steps.check.outputs.changed == 'true' && steps.rebase.outputs.conflict == 'false' && steps.verify.outputs.ok == 'true'
+        run: |
+          echo "${{ steps.check.outputs.new_base }}" > "$BASE_MARKER"
+          git add "$BASE_MARKER"
+          git commit -m "ci: bump GKI fork base to ${{ steps.check.outputs.new_base }}"
+          git push origin "HEAD:${{ env.BRANCH }}"
+
+      - name: File issue on conflict or content loss
+        if: steps.check.outputs.changed == 'true' && (steps.rebase.outputs.conflict == 'true' || steps.verify.outputs.ok == 'false')
         env:
           GH_TOKEN: ${{ github.token }}
+          REASON: ${{ steps.rebase.outputs.conflict == 'true' && 'produced conflicts' || 'applied cleanly but dropped fork content (see job log for the missing lines)' }}
         run: |
           gh issue create \
             --repo "${{ github.repository }}" \
             --title "Weekly GKI rebase failed: manual rebase needed onto ${{ steps.check.outputs.new_base }}" \
-            --body "Rebasing the yukawa commit from ${{ steps.check.outputs.old_base }} onto ${{ env.UPSTREAM_BRANCH }}@${{ steps.check.outputs.new_base }} produced conflicts. \`${{ env.BRANCH }}\` was left untouched. Rebase manually:
+            --body "Replaying the fork commit range (${{ steps.check.outputs.old_base }}..${{ env.BRANCH }}) onto ${{ env.UPSTREAM_BRANCH }}@${{ steps.check.outputs.new_base }} $REASON. \`${{ env.BRANCH }}\` was left untouched. Rebase manually:
 
           \`\`\`
           git fetch $UPSTREAM_URL $UPSTREAM_BRANCH
           git rebase --onto FETCH_HEAD ${{ steps.check.outputs.old_base }} ${{ env.BRANCH }}
-          # resolve conflicts, then:
-          git push --force origin ${{ env.BRANCH }}
+          # resolve conflicts / restore dropped content, then update $BASE_MARKER to FETCH_HEAD's sha:
+          git rev-parse FETCH_HEAD > $BASE_MARKER && git add $BASE_MARKER && git commit -m 'ci: bump GKI fork base'
+          git push origin ${{ env.BRANCH }}
           \`\`\`"
