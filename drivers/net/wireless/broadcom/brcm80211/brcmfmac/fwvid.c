@@ -26,7 +26,7 @@ struct brcmf_fwvid_entry {
 	const char *name;
 	const struct brcmf_fwvid_ops *vops;
 	struct list_head drvr_list;
-#if IS_MODULE(CONFIG_BRCMFMAC)
+#if 0
 	struct module *vmod;
 	struct completion reg_done;
 #endif
@@ -34,7 +34,7 @@ struct brcmf_fwvid_entry {
 
 static DEFINE_MUTEX(fwvid_list_lock);
 
-#if IS_MODULE(CONFIG_BRCMFMAC)
+#if 0
 #define FWVID_ENTRY_INIT(_vid, _name) \
 	[BRCMF_FWVENDOR_ ## _vid] = { \
 		.name = #_name, \
@@ -48,7 +48,7 @@ static DEFINE_MUTEX(fwvid_list_lock);
 		.drvr_list = LIST_HEAD_INIT(fwvid_list[BRCMF_FWVENDOR_ ## _vid].drvr_list), \
 		.vops = _vid ## _VOPS \
 	}
-#endif /* IS_MODULE(CONFIG_BRCMFMAC) */
+#endif
 
 static struct brcmf_fwvid_entry fwvid_list[BRCMF_FWVENDOR_NUM] = {
 	FWVID_ENTRY_INIT(WCC, wcc),
@@ -56,7 +56,7 @@ static struct brcmf_fwvid_entry fwvid_list[BRCMF_FWVENDOR_NUM] = {
 	FWVID_ENTRY_INIT(BCA, bca),
 };
 
-#if IS_MODULE(CONFIG_BRCMFMAC)
+#if 0
 static int brcmf_fwvid_request_module(enum brcmf_fwvendor fwvid)
 {
 	int ret;
