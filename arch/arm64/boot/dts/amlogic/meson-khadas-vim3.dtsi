@@ -62,14 +62,27 @@
 		reset-gpios = <&gpio BOOT_12 GPIO_ACTIVE_LOW>;
 	};
 
-	gpio-keys-polled {
-		compatible = "gpio-keys-polled";
-		poll-interval = <100>;
+	/*
+	 * KEY_POWER here is driven by the Pico MCU relaying the car's ACC
+	 * line (short press = ACC edge, long press = real power-off request
+	 * -- see SchuurmanVehicleHardware accKeyLoop). A polled GPIO cannot
+	 * wake the SoC from suspend (nothing is running to poll it), which
+	 * silently broke ACC-triggered suspend-to-RAM resume. GPIOAO_7 is in
+	 * the always-on domain and has a real interrupt line (IRQID_GPIOAO_7,
+	 * same mechanism used by meson-sm1-bananapi.dtsi's wake button), so
+	 * this is real interrupt-driven gpio-keys with wakeup-source instead.
+	 */
+	gpio-keys {
+		compatible = "gpio-keys";
 
 		power-button {
 			label = "power";
 			linux,code = <KEY_POWER>;
 			gpios = <&gpio_ao GPIOAO_7 GPIO_ACTIVE_LOW>;
+			interrupt-parent = <&gpio_intc>;
+			interrupts = <IRQID_GPIOAO_7 IRQ_TYPE_EDGE_BOTH>;
+			debounce-interval = <20>;
+			wakeup-source;
 		};
 	};
 
