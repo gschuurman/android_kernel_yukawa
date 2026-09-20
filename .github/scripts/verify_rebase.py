@@ -15,6 +15,7 @@ Usage: verify_rebase.py <diff-file>
 Exits 1 and prints missing (file, line) pairs if anything the diff added is
 no longer found in the corresponding file on disk.
 """
+import os
 import re
 import sys
 
@@ -59,8 +60,16 @@ def main():
     for path, added_line in parse_added_lines(sys.argv[1]):
         if path not in file_cache:
             try:
-                with open(path, encoding="utf-8", errors="replace") as fh:
-                    file_cache[path] = fh.read()
+                if os.path.islink(path):
+                    # A diff line for a symlink is the link target itself
+                    # (git stores it as the blob content); reading the file
+                    # normally follows the link and checks the *target's*
+                    # content instead, which can never match and would
+                    # false-positive on every future rebase.
+                    file_cache[path] = os.readlink(path)
+                else:
+                    with open(path, encoding="utf-8", errors="replace") as fh:
+                        file_cache[path] = fh.read()
             except FileNotFoundError:
                 file_cache[path] = None
         content = file_cache[path]
