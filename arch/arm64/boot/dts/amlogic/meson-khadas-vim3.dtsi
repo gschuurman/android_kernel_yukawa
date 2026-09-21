@@ -63,25 +63,41 @@
 	};
 
 	/*
-	 * KEY_POWER here is driven by the Pico MCU relaying the car's ACC
-	 * line (short press = ACC edge, long press = real power-off request
-	 * -- see SchuurmanVehicleHardware accKeyLoop). A polled GPIO cannot
-	 * wake the SoC from suspend (nothing is running to poll it), which
-	 * silently broke ACC-triggered suspend-to-RAM resume. GPIOAO_7 is in
-	 * the always-on domain and has a real interrupt line (IRQID_GPIOAO_7,
-	 * same mechanism used by meson-sm1-bananapi.dtsi's wake button), so
-	 * this is real interrupt-driven gpio-keys with wakeup-source instead.
+	 * KEY_POWER here is driven by the Pico MCU relaying the car's ACC line
+	 * (short press = ACC edge, long press = real power-off request -- see
+	 * SchuurmanVehicleHardware accKeyLoop). The state is read by polling.
 	 */
-	gpio-keys {
-		compatible = "gpio-keys";
+	gpio-keys-polled {
+		compatible = "gpio-keys-polled";
+		poll-interval = <100>;
 
 		power-button {
 			label = "power";
 			linux,code = <KEY_POWER>;
 			gpios = <&gpio_ao GPIOAO_7 GPIO_ACTIVE_LOW>;
+		};
+	};
+
+	/*
+	 * A polled GPIO cannot wake the SoC from suspend (nothing is running to
+	 * poll it), which broke resuming from ACC-triggered suspend-to-RAM. The
+	 * same pin (always-on domain) also has a real interrupt line through
+	 * gpio_intc, so add an interrupt-only wake source next to the polled key.
+	 *
+	 * The G12 GPIO interrupt controller cannot do both-edge triggers (only
+	 * sm1 and newer set support_edge_both), so this is falling-edge only: the
+	 * pin is active-low, i.e. this is the "press". It emits an unmapped code
+	 * so Android does not treat it as a wake/power key by itself; the polled
+	 * node above keeps reporting KEY_POWER once the system is running again.
+	 */
+	gpio-keys-wake {
+		compatible = "gpio-keys";
+
+		acc-wake {
+			label = "acc-wake";
+			linux,code = <BTN_TRIGGER_HAPPY>;
 			interrupt-parent = <&gpio_intc>;
-			interrupts = <IRQID_GPIOAO_7 IRQ_TYPE_EDGE_BOTH>;
-			debounce-interval = <20>;
+			interrupts = <IRQID_GPIOAO_7 IRQ_TYPE_EDGE_FALLING>;
 			wakeup-source;
 		};
 	};
