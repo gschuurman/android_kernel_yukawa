@@ -278,6 +278,18 @@
 		clock-frequency = <32768>;
 		pwms = <&pwm_ef 0 30518 0>; /* PWM_E at 32.768KHz */
 	};
+
+	/*
+	 * OP-TEE (BL32 in the FIP, TZDRAM 0x05300000 + 12 MiB, already inside the
+	 * secmon@5300000 no-map reservation). Lives in the base DT rather than the DTBO
+	 * because U-Boot never applies the DTBO overlay (adtbo_idx is not set).
+	 */
+	firmware {
+		optee {
+			compatible = "linaro,optee-tz";
+			method = "smc";
+		};
+	};
 };
 
 &arb {
