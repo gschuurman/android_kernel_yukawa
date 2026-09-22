@@ -299,8 +299,18 @@ static int tee_ioctl_shm_alloc(struct tee_context *ctx,
 		return -EINVAL;
 
 	shm = tee_shm_alloc_user_buf(ctx, data.size);
-	if (IS_ERR(shm))
+	if (IS_ERR(shm)) {
+		/*
+		 * Diagnostic printk: this is the userspace-visible failure point for TEE_IOC_SHM_ALLOC
+		 * (e.g. tee-supplicant's process_alloc()/alloc_shm(), which itself never logs on
+		 * failure). Neither this path nor its OP-TEE core caller (get_rpc_alloc_res) print
+		 * anything on failure otherwise, and OP-TEE core's own trace goes straight to the
+		 * physical UART, invisible to dmesg/logcat. See device/khadas/vim3/handoff-keymint-optee.md.
+		 */
+		pr_err("tee: TEE_IOC_SHM_ALLOC failed: size=%llu err=%ld\n",
+		       data.size, PTR_ERR(shm));
 		return PTR_ERR(shm);
+	}
 
 	data.id = shm->id;
 	data.size = shm->size;
