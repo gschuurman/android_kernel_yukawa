@@ -283,6 +283,17 @@
 	 * OP-TEE (BL32 in the FIP, TZDRAM 0x05300000 + 12 MiB, already inside the
 	 * secmon@5300000 no-map reservation). Lives in the base DT rather than the DTBO
 	 * because U-Boot never applies the DTBO overlay (adtbo_idx is not set).
+	 *
+	 * Dynamic SHM used to never activate on this platform: OP-TEE core only advertises it when
+	 * core_mmu_nsec_ddr_is_defined() is true, which the g12b optee_os port never registered
+	 * (confirmed via a live kprobe on pool_op_gen_alloc, 2026-09-22). Linux fell back to the
+	 * static SHM pool at CFG_SHMEM_START=0x05000000, which turned out to be inside a range
+	 * Amlogic's stock BL2 hardware-secures for its entire extent (confirmed by decompiling
+	 * bl2.bin) -- causing real SError crashes. Fixed on the OP-TEE side, not here: see
+	 * bootloader/optee_os/core/arch/arm/plat-amlogic/main.c (register_ddr() of the real
+	 * non-secure DDR ranges) and conf.mk (CFG_CORE_RESERVED_SHM=n, so the hardware-secured
+	 * static pool can never be used again). No memory-region/CMA carve-out needed here.
+	 * See device/khadas/vim3/handoff-keymint-optee.md.
 	 */
 	firmware {
 		optee {
