@@ -22,6 +22,7 @@
 #include "etnaviv_mmu.h"
 #include "etnaviv_perfmon.h"
 #include "etnaviv_sched.h"
+#include <linux/reset.h>
 #include "common.xml.h"
 #include "state.xml.h"
 #include "state_hi.xml.h"
@@ -1876,7 +1877,12 @@ static int etnaviv_gpu_platform_probe(struct platform_device *pdev)
 	if (gpu->irq < 0)
 		return gpu->irq;
 
-	err = devm_request_irq(&pdev->dev, gpu->irq, irq_handler, 0,
+	/*
+	 * Not enabled until the core is powered, clocked and out of reset (runtime resume): the handler
+	 * reads a core register, and the interrupt line of a powered-off core may well be asserted (the
+	 * Amlogic NPU's is) -- reading an unpowered core stalls the bus and hangs the SoC.
+	 */
+	err = devm_request_irq(&pdev->dev, gpu->irq, irq_handler, IRQF_NO_AUTOEN,
 			       dev_name(gpu->dev), gpu);
 	if (err) {
 		dev_err(dev, "failed to request IRQ%u: %d\n", gpu->irq, err);
@@ -1905,6 +1911,12 @@ static int etnaviv_gpu_platform_probe(struct platform_device *pdev)
 	if (IS_ERR(gpu->clk_shader))
 		return PTR_ERR(gpu->clk_shader);
 	gpu->base_rate_shader = clk_get_rate(gpu->clk_shader);
+
+	gpu->rst = devm_reset_control_get_optional_exclusive(&pdev->dev, NULL);
+	if (IS_ERR(gpu->rst))
+		return PTR_ERR(gpu->rst);
+	dev_dbg(&pdev->dev, "clocks: core %lu Hz, bus %lu Hz, reset %s\n",
+		 gpu->base_rate_core, clk_get_rate(gpu->clk_bus), gpu->rst ? "yes" : "no");
 
 	/* TODO: figure out max mapped size */
 	dev_set_drvdata(dev, gpu);
@@ -1956,6 +1968,9 @@ static int etnaviv_gpu_rpm_suspend(struct device *dev)
 
 	gpu->state = ETNA_GPU_STATE_IDENTIFIED;
 
+	/* the core is about to lose its clocks (and maybe its power): see etnaviv_gpu_platform_probe() */
+	disable_irq(gpu->irq);
+
 	return etnaviv_gpu_clk_disable(gpu);
 }
 
@@ -1964,14 +1979,27 @@ static int etnaviv_gpu_rpm_resume(struct device *dev)
 	struct etnaviv_gpu *gpu = dev_get_drvdata(dev);
 	int ret;
 
+	/*
+	 * Hold the core in reset (if it has one) while its clocks start; the power domain is already on.
+	 * The Amlogic NPU (VIPNano) is not reset by its power domain; Amlogic's own driver resets it after
+	 * powering it up, and so does this.
+	 */
+	reset_control_assert(gpu->rst);
 	ret = etnaviv_gpu_clk_enable(gpu);
-	if (ret)
+	if (ret) {
+		reset_control_deassert(gpu->rst);
 		return ret;
+	}
+	udelay(10);
+	reset_control_deassert(gpu->rst);
+	udelay(10);
+	enable_irq(gpu->irq);
 
 	/* Re-initialise the basic hardware state */
 	if (gpu->state == ETNA_GPU_STATE_IDENTIFIED) {
 		ret = etnaviv_gpu_hw_resume(gpu);
 		if (ret) {
+			disable_irq(gpu->irq);
 			etnaviv_gpu_clk_disable(gpu);
 			return ret;
 		}
