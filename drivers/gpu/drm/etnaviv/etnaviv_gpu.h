@@ -157,6 +157,8 @@ struct etnaviv_gpu {
 	struct clk *clk_reg;
 	struct clk *clk_core;
 	struct clk *clk_shader;
+	/* optional; e.g. the Amlogic NPU core must be reset after its power domain comes up */
+	struct reset_control *rst;
 
 	unsigned int freq_scale;
 	unsigned int fe_waitcycles;
