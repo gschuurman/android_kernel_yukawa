@@ -39,3 +39,8 @@
 	phy-names = "usb2-phy0", "usb2-phy1";
 };
  */
+
+/* The A311D's Vivante VIPNano-QI NPU, driven by etnaviv (Mesa Teflon for TensorFlow Lite). */
+&npu {
+	status = "okay";
+};
