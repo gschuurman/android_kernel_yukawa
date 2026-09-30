@@ -1,0 +1,133 @@
+name: Weekly GKI rebase
+
+# Keeps lineage-23.0 as [latest android16-6.12-lts tip] + [every fork commit].
+# The fork is NOT one squash commit -- it's a short stack of individually
+# authored commits (DTS/config customizations, ...). `.gki-fork-base` in
+# lineage-23.0 records the SHA of the last pure-upstream commit; everything
+# after it, up to the branch head, is "the fork". Every run: fetch the current
+# upstream tip, and if it moved, replay the *entire* fork-base..HEAD range onto
+# it (not just the last commit -- see incident 2026-07-16, where
+# format-patch -1 HEAD silently dropped everything except the newest fork
+# commit). After a clean replay, verify no line the fork range added went
+# missing (verify_rebase.py), bump the marker, and force-push (the branch is
+# rebased) with a lease on the head this run started from. On conflict or
+# content loss, the branch is left untouched and an issue is filed for a
+# manual rebase.
+#
+# This workflow lives on the `ci` branch (the repository's default branch, so
+# the schedule runs), not in lineage-23.0. The replay excludes `.github`: early
+# fork commits added the workflow there, and GitHub refuses pushes that change
+# workflow files when they come from the default GITHUB_TOKEN.
+
+on:
+  schedule:
+    - cron: '0 8 * * 1' # Monday 08:00 UTC
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+  issues: write
+
+env:
+  UPSTREAM_URL: https://android.googlesource.com/kernel/common
+  UPSTREAM_BRANCH: android16-6.12-lts
+  BRANCH: lineage-23.0
+  BASE_MARKER: .gki-fork-base
+
+defaults:
+  run:
+    working-directory: kernel
+
+jobs:
+  rebase:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout CI scripts
+        uses: actions/checkout@v4
+        with:
+          path: ci
+
+      - name: Checkout kernel branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.BRANCH }}
+          path: kernel
+          fetch-depth: 0
+
+      - name: Configure git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Fetch upstream GKI tip
+        run: git fetch --depth=1 "$UPSTREAM_URL" "$UPSTREAM_BRANCH"
+
+      - name: Check for upstream movement
+        id: check
+        run: |
+          old_base=$(cat "$BASE_MARKER")
+          new_base=$(git rev-parse FETCH_HEAD)
+          echo "old_head=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          echo "old_base=$old_base" >> "$GITHUB_OUTPUT"
+          echo "new_base=$new_base" >> "$GITHUB_OUTPUT"
+          if [ "$old_base" = "$new_base" ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Re-apply the full fork commit range onto new tip
+        if: steps.check.outputs.changed == 'true'
+        id: rebase
+        run: |
+          old_base="${{ steps.check.outputs.old_base }}"
+          new_base="${{ steps.check.outputs.new_base }}"
+          git diff "$old_base" HEAD -- . ":(exclude)$BASE_MARKER" ":(exclude).github" > /tmp/fork.diff
+          # commits that only touched .github drop out of the series
+          git format-patch "$old_base..HEAD" --stdout -- . ":(exclude).github" > /tmp/fork.patch
+          git checkout --detach "$new_base"
+          if git am /tmp/fork.patch; then
+            echo "conflict=false" >> "$GITHUB_OUTPUT"
+          else
+            git am --abort
+            echo "conflict=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Verify no fork content was silently dropped
+        if: steps.check.outputs.changed == 'true' && steps.rebase.outputs.conflict == 'false'
+        id: verify
+        run: |
+          if python3 ../ci/.github/scripts/verify_rebase.py /tmp/fork.diff; then
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Bump base marker and push
+        if: steps.check.outputs.changed == 'true' && steps.rebase.outputs.conflict == 'false' && steps.verify.outputs.ok == 'true'
+        run: |
+          echo "${{ steps.check.outputs.new_base }}" > "$BASE_MARKER"
+          git add "$BASE_MARKER"
+          git commit -m "ci: bump GKI fork base to ${{ steps.check.outputs.new_base }}"
+          # the replay rewrote the branch; only replace the head this run started from
+          git push --force-with-lease="refs/heads/${{ env.BRANCH }}:${{ steps.check.outputs.old_head }}" \
+            origin "HEAD:${{ env.BRANCH }}"
+
+      - name: File issue on conflict or content loss
+        if: steps.check.outputs.changed == 'true' && (steps.rebase.outputs.conflict == 'true' || steps.verify.outputs.ok == 'false')
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REASON: ${{ steps.rebase.outputs.conflict == 'true' && 'produced conflicts' || 'applied cleanly but dropped fork content (see job log for the missing lines)' }}
+        run: |
+          gh issue create \
+            --repo "${{ github.repository }}" \
+            --title "Weekly GKI rebase failed: manual rebase needed onto ${{ steps.check.outputs.new_base }}" \
+            --body "Replaying the fork commit range (${{ steps.check.outputs.old_base }}..${{ env.BRANCH }}) onto ${{ env.UPSTREAM_BRANCH }}@${{ steps.check.outputs.new_base }} $REASON. \`${{ env.BRANCH }}\` was left untouched. Rebase manually:
+
+          \`\`\`
+          git fetch $UPSTREAM_URL $UPSTREAM_BRANCH
+          git rebase --onto FETCH_HEAD ${{ steps.check.outputs.old_base }} ${{ env.BRANCH }}
+          # resolve conflicts / restore dropped content, then update $BASE_MARKER to FETCH_HEAD's sha:
+          git rev-parse FETCH_HEAD > $BASE_MARKER && git add $BASE_MARKER && git commit -m 'ci: bump GKI fork base'
+          git push --force-with-lease origin ${{ env.BRANCH }}
+          \`\`\`"
