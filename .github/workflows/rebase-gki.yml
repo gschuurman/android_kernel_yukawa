@@ -60,7 +60,10 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
       - name: Fetch upstream GKI tip
-        run: git fetch --depth=1 "$UPSTREAM_URL" "$UPSTREAM_BRANCH"
+        # Not shallow: the push has to send every upstream commit between the old and the new
+        # base, and GitHub refuses pushes from a shallow history. The checkout already has the
+        # history up to the old base, so only the new upstream commits are downloaded.
+        run: git fetch "$UPSTREAM_URL" "$UPSTREAM_BRANCH"
 
       - name: Check for upstream movement
         id: check
