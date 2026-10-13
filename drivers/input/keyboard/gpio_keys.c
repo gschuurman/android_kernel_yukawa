@@ -791,9 +791,19 @@ gpio_keys_get_devtree_pdata(struct device *dev)
 			if (irq > 0)
 				button->wakeirq = irq;
 
-			if (!button->irq && !button->wakeirq)
-				button->irq =
-					irq_of_parse_and_map(to_of_node(child), 0);
+			if (!button->irq && !button->wakeirq) {
+				/*
+				 * of_irq_get() instead of irq_of_parse_and_map(): the
+				 * latter returns 0 while the interrupt controller is
+				 * still a not-yet-loaded module (irq-meson-gpio), which
+				 * failed the probe with -EINVAL instead of deferring.
+				 */
+				irq = of_irq_get(to_of_node(child), 0);
+				if (irq == -EPROBE_DEFER)
+					return ERR_PTR(irq);
+				if (irq > 0)
+					button->irq = irq;
+			}
 		}
 
 		if (fwnode_property_read_u32(child, "linux,code",
