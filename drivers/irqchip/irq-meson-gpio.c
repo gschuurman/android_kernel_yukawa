@@ -422,6 +422,8 @@ static struct irq_chip meson_gpio_irq_chip = {
 	.irq_eoi		= irq_chip_eoi_parent,
 	.irq_set_type		= meson_gpio_irq_set_type,
 	.irq_retrigger		= irq_chip_retrigger_hierarchy,
+	/* Let enable_irq_wake() succeed (the GIC parent skips set_wake). */
+	.irq_set_wake		= irq_chip_set_wake_parent,
 #ifdef CONFIG_SMP
 	.irq_set_affinity	= irq_chip_set_affinity_parent,
 #endif
