@@ -200,16 +200,33 @@
 	sound {
 		compatible = "amlogic,axg-sound-card";
 		model = "KHADAS-VIM3";
-		audio-aux-devs = <&tdmin_a>, <&tdmout_a>;
+		/*
+		 * The PCM5102A codec has no DAPM widgets, so give the TDM-B playback path a
+		 * sink endpoint here; without one DAPM never powers TDMOUT_B (its formatter
+		 * is enabled from a DAPM event) and the DACs get no data.
+		 */
+		audio-widgets = "Line", "Car Audio Module Out";
+		audio-aux-devs = <&tdmin_a>, <&tdmout_a>,
+				 <&tdmin_b>, <&tdmout_b>;
 		audio-routing = "TDMOUT_A IN 0", "FRDDR_A OUT 0",
 				"TDMOUT_A IN 1", "FRDDR_B OUT 0",
 				"TDMOUT_A IN 2", "FRDDR_C OUT 0",
 				"TDM_A Playback", "TDMOUT_A OUT",
+				"TDMOUT_B IN 0", "FRDDR_A OUT 1",
+				"TDMOUT_B IN 1", "FRDDR_B OUT 1",
+				"TDMOUT_B IN 2", "FRDDR_C OUT 1",
+				"TDM_B Playback", "TDMOUT_B OUT",
+				"Car Audio Module Out", "TDM_B Playback",
 				"TDMIN_A IN 0", "TDM_A Capture",
 				"TDMIN_A IN 3", "TDM_A Loopback",
+				"TDMIN_B IN 1", "TDM_B Capture",
+				"TDMIN_B IN 4", "TDM_B Loopback",
 				"TODDR_A IN 0", "TDMIN_A OUT",
 				"TODDR_B IN 0", "TDMIN_A OUT",
-				"TODDR_C IN 0", "TDMIN_A OUT";
+				"TODDR_C IN 0", "TDMIN_A OUT",
+				"TODDR_A IN 1", "TDMIN_B OUT",
+				"TODDR_B IN 1", "TDMIN_B OUT",
+				"TODDR_C IN 1", "TDMIN_B OUT";
 
 		clocks = <&clkc CLKID_MPLL2>,
 			 <&clkc CLKID_MPLL0>,
@@ -270,6 +287,62 @@
 				sound-dai = <&hdmi_tx>;
 			};
 		};
+
+		/*
+		 * Car audio module on the 40-pin header (TDM-B, I2S, SoC is clock master):
+		 *   pin 29 GPIOA_1 BCLK, pin 32 GPIOA_2 LRCK (shared by all three converters)
+		 *   pin 31 GPIOA_3 lane 0 out -> front PCM5102A (ch 0/1 = FL/FR)
+		 *   pin 33 GPIOA_4 lane 1 out -> rear PCM5102A  (ch 2/3 = RL/RR)
+		 *   pin 30 GPIOA_0 MCLK0 (256 fs) -> PCM1808 SCKI
+		 *   pin 35 GPIOH_5 lane 3 in  <- PCM1808 DOUT (mic on the left channel)
+		 * 32-bit slots, so BCLK = 64 fs: the PCM1808 in slave mode needs 64 fs (or
+		 * 48 fs), and the PCM5102A PLL accepts 32/48/64 fs. The PCM1808 has no driver
+		 * of its own; dmic-codec is a generic capture-only DAI that stands in for it.
+		 * Playback and capture share the interface clocks, so they always run at the
+		 * same rate.
+		 */
+		dai-link-8 {
+			sound-dai = <&tdmif_b>;
+			dai-format = "i2s";
+			dai-tdm-slot-num = <2>;
+			dai-tdm-slot-width = <32>;
+			dai-tdm-slot-tx-mask-0 = <1 1>;
+			dai-tdm-slot-tx-mask-1 = <1 1>;
+			dai-tdm-slot-rx-mask-3 = <1 1>;
+			mclk-fs = <256>;
+
+			codec-0 {
+				sound-dai = <&dac_front>;
+			};
+
+			codec-1 {
+				sound-dai = <&dac_rear>;
+			};
+
+			codec-2 {
+				sound-dai = <&mic_adc>;
+			};
+		};
+	};
+
+	dac_front: audio-codec-0 {
+		compatible = "ti,pcm5102a";
+		#sound-dai-cells = <0>;
+		sound-name-prefix = "DAC_FRONT";
+	};
+
+	dac_rear: audio-codec-1 {
+		compatible = "ti,pcm5102a";
+		#sound-dai-cells = <0>;
+		sound-name-prefix = "DAC_REAR";
+	};
+
+	/* PCM1808 I2S ADC (FMT/MD0/MD1 low: I2S, slave), fed by a MAX9814 mic preamp */
+	mic_adc: audio-codec-2 {
+		compatible = "dmic-codec";
+		#sound-dai-cells = <0>;
+		num-channels = <2>;
+		sound-name-prefix = "MIC_ADC";
 	};
 
 	wifi32k: wifi32k {
@@ -445,10 +518,12 @@
 
 &pwm_ef {
 	status = "okay";
-	/* pwm_f_h_pins muxes PWM_F on the GPIO header for the VHAL-driven
-	 * backlight (vendor/gschuurman/vehicle_interfaces/automotive/vhal,
-	 * pwm1); dropped by the 2026-07 GKI rebase squash, restored here. */
-	pinctrl-0 = <&pwm_e_pins>, <&pwm_f_h_pins>;
+	/*
+	 * PWM_E only (wifi32k). Header pin 35 (GPIOH_5) used to carry PWM_F for the
+	 * perfboard backlight; on the rev 0.6 board the MCU drives the backlight and
+	 * pin 35 is the audio module's TDM-B data input (mic ADC), see &tdmif_b.
+	 */
+	pinctrl-0 = <&pwm_e_pins>;
 	pinctrl-names = "default";
 };
 
@@ -552,6 +627,32 @@
 };
 
 &tdmout_a {
+	status = "okay";
+};
+
+/* Car audio module, see dai-link-8 in the sound node. */
+&tdmif_b {
+	pinctrl-0 = <&tdm_b_sclk_pins>, <&tdm_b_fs_pins>,
+		    <&tdm_b_dout0_pins>, <&tdm_b_dout1_pins>,
+		    <&tdm_b_din3_h_pins>, <&mclk0_a_pins>;
+	pinctrl-names = "default";
+	status = "okay";
+
+	/* Drive the BCLK/LRCK pads and the MCLK0 pad from the TDM-B master clocks. */
+	assigned-clocks = <&clkc_audio AUD_CLKID_TDM_SCLK_PAD1>,
+			  <&clkc_audio AUD_CLKID_TDM_LRCLK_PAD1>,
+			  <&clkc_audio AUD_CLKID_TDM_MCLK_PAD0>;
+	assigned-clock-parents = <&clkc_audio AUD_CLKID_MST_B_SCLK>,
+				 <&clkc_audio AUD_CLKID_MST_B_LRCLK>,
+				 <&clkc_audio AUD_CLKID_MST_B_MCLK>;
+	assigned-clock-rates = <0>, <0>, <0>;
+};
+
+&tdmin_b {
+	status = "okay";
+};
+
+&tdmout_b {
 	status = "okay";
 };
 
