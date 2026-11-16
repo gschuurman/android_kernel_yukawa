@@ -32,12 +32,9 @@
 #define PCIE_CFG_STATUS12		0x30
 #define IS_SMLH_LINK_UP(x)		((x) & (1 << 6))
 #define IS_RDLH_LINK_UP(x)		((x) & (1 << 16))
-#define IS_LTSSM_UP(x)			((((x) >> 10) & 0x1f) == 0x11)
 
 #define PCIE_CFG_STATUS17		0x44
-#define PM_CURRENT_STATE(x)		(((x) >> 7) & 0x1)
 
-#define WAIT_LINKUP_TIMEOUT		4000
 #define PORT_CLK_RATE			100000000UL
 #define MAX_PAYLOAD_SIZE		256
 #define MAX_READ_REQ_SIZE		256
@@ -340,40 +337,18 @@ static struct pci_ops meson_pci_ops = {
 static int meson_pcie_link_up(struct dw_pcie *pci)
 {
 	struct meson_pcie *mp = to_meson_pcie(pci);
-	struct device *dev = pci->dev;
-	u32 speed_okay = 0;
-	u32 cnt = 0;
-	u32 state12, state17, smlh_up, ltssm_up, rdlh_up;
+	u32 state12 = meson_cfg_readl(mp, PCIE_CFG_STATUS12);
 
-	do {
-		state12 = meson_cfg_readl(mp, PCIE_CFG_STATUS12);
-		state17 = meson_cfg_readl(mp, PCIE_CFG_STATUS17);
-		smlh_up = IS_SMLH_LINK_UP(state12);
-		rdlh_up = IS_RDLH_LINK_UP(state12);
-		ltssm_up = IS_LTSSM_UP(state12);
-
-		if (PM_CURRENT_STATE(state17) < PCIE_GEN3)
-			speed_okay = 1;
-
-		if (smlh_up)
-			dev_dbg(dev, "smlh_link_up is on\n");
-		if (rdlh_up)
-			dev_dbg(dev, "rdlh_link_up is on\n");
-		if (ltssm_up)
-			dev_dbg(dev, "ltssm_up is on\n");
-		if (speed_okay)
-			dev_dbg(dev, "speed_okay\n");
-
-		if (smlh_up && rdlh_up && ltssm_up && speed_okay)
-			return 1;
-
-		cnt++;
-
-		udelay(10);
-	} while (cnt < WAIT_LINKUP_TIMEOUT);
-
-	dev_err(dev, "error: wait linkup timeout\n");
-	return 0;
+	/*
+	 * The link is up when the physical and the data link layer are up.
+	 * Don't require the LTSSM to be in L0: a device in D3hot (system
+	 * suspend) or any ASPM state puts the link in L1, which then read as
+	 * "down", so the DWC core refused the config write that brings the
+	 * device back to D0 and the NVMe was lost on resume ("Unable to change
+	 * power state from D3hot to D0"). The callers poll, so no wait loop
+	 * here either (it cost 40 ms per config access while in L1).
+	 */
+	return IS_SMLH_LINK_UP(state12) && IS_RDLH_LINK_UP(state12);
 }
 
 static int meson_pcie_host_init(struct dw_pcie_rp *pp)
