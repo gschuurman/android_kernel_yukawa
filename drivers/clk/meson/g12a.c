@@ -15,7 +15,9 @@
 #include <linux/of.h>
 #include <linux/platform_device.h>
 #include <linux/clk.h>
+#include <linux/delay.h>
 #include <linux/module.h>
+#include <linux/syscore_ops.h>
 
 #include "clk-mpll.h"
 #include "clk-pll.h"
@@ -5540,6 +5542,119 @@ struct meson_g12a_data {
 	int (*dvfs_setup)(struct platform_device *pdev);
 };
 
+#ifdef CONFIG_PM_SLEEP
+/*
+ * G12B deep suspend (PSCI SYSTEM_SUSPEND): BL30/bl301 move both clusters to the fixed clock path and
+ * leave the CPU PLLs off or reprogrammed (they print "Little/Big core clk resume rate"). The clk
+ * framework still has sys_pll/sys1_pll as enabled (CLK_IS_CRITICAL) at their old rates, so the next
+ * cpufreq step to a PLL rate skipped the PLL and switched the cluster onto a dead PLL: a silent hard
+ * hang (VIM3 car head unit, 2026-11-20). The DT puts both clusters on their fixed 1 GHz OPP before
+ * suspend (opp-suspend); here the raw PLL and CPU clock registers are saved at the last moment and
+ * the PLLs are brought back to exactly that state, while only CPU0 runs.
+ *
+ * G12B: the A53 cluster (CPU0) runs from HHI_SYS_CPU_CLK_CNTL0 with sys1_pll, the A73 cluster from
+ * HHI_SYS_CPUB_CLK_CNTL with sys_pll. Bit 11 of either is the final mux (1 = PLL).
+ */
+#define G12B_PLL_EN		BIT(28)
+#define G12B_PLL_RST		BIT(29)
+#define G12B_PLL_LOCK		BIT(31)
+#define G12B_CPU_FINAL_PLL	BIT(11)
+
+struct g12b_pll_save {
+	const char *name;
+	unsigned int base;		/* CNTL0, CNTL1..6 follow */
+	u32 regs[7];
+};
+
+static struct regmap *g12b_pm_map;
+static struct g12b_pll_save g12b_pm_plls[] = {
+	{ .name = "sys_pll",  .base = HHI_SYS_PLL_CNTL0 },	/* A73 */
+	{ .name = "sys1_pll", .base = HHI_SYS1_PLL_CNTL0 },	/* A53, CPU0 */
+};
+static u32 g12b_pm_cpu_cntl0, g12b_pm_cpub_cntl;
+
+static int g12b_clkc_suspend(void)
+{
+	unsigned int i, r;
+
+	for (i = 0; i < ARRAY_SIZE(g12b_pm_plls); i++)
+		for (r = 0; r < 7; r++)
+			regmap_read(g12b_pm_map, g12b_pm_plls[i].base + 4 * r,
+				    &g12b_pm_plls[i].regs[r]);
+	regmap_read(g12b_pm_map, HHI_SYS_CPU_CLK_CNTL0, &g12b_pm_cpu_cntl0);
+	regmap_read(g12b_pm_map, HHI_SYS_CPUB_CLK_CNTL, &g12b_pm_cpub_cntl);
+	return 0;
+}
+
+static void g12b_clkc_restore_pll(struct g12b_pll_save *p)
+{
+	u32 cntl0 = p->regs[0], now;
+	unsigned int r, tries;
+
+	/* Reset and off, the old settings, then on and out of reset (meson_clk_pll_enable order). */
+	regmap_write(g12b_pm_map, p->base, (cntl0 | G12B_PLL_RST) & ~(G12B_PLL_EN | G12B_PLL_LOCK));
+	for (r = 1; r < 7; r++)
+		regmap_write(g12b_pm_map, p->base + 4 * r, p->regs[r]);
+	if (!(cntl0 & G12B_PLL_EN))
+		return;		/* was off: leave it in reset */
+	regmap_write(g12b_pm_map, p->base, (cntl0 | G12B_PLL_RST | G12B_PLL_EN) & ~G12B_PLL_LOCK);
+	udelay(10);
+	regmap_write(g12b_pm_map, p->base, (cntl0 | G12B_PLL_EN) & ~(G12B_PLL_RST | G12B_PLL_LOCK));
+	for (tries = 0; tries < 500; tries++) {
+		regmap_read(g12b_pm_map, p->base, &now);
+		if (now & G12B_PLL_LOCK)
+			return;
+		udelay(20);
+	}
+	pr_err("g12b-clkc: %s did not lock after resume (cntl0 %08x)\n", p->name, now);
+}
+
+static void g12b_clkc_resume(void)
+{
+	u32 cpu, cpub, pll0[2];
+	unsigned int i;
+
+	regmap_read(g12b_pm_map, HHI_SYS_CPU_CLK_CNTL0, &cpu);
+	regmap_read(g12b_pm_map, HHI_SYS_CPUB_CLK_CNTL, &cpub);
+	for (i = 0; i < ARRAY_SIZE(g12b_pm_plls); i++)
+		regmap_read(g12b_pm_map, g12b_pm_plls[i].base, &pll0[i]);
+	pr_info("g12b-clkc: resume: cpu %08x (was %08x) cpub %08x (was %08x) sys_pll %08x (was %08x) sys1_pll %08x (was %08x)\n",
+		cpu, g12b_pm_cpu_cntl0, cpub, g12b_pm_cpub_cntl,
+		pll0[0], g12b_pm_plls[0].regs[0], pll0[1], g12b_pm_plls[1].regs[0]);
+
+	/* A73 cluster: all its cores are off here, its PLL and clock mux can be written directly. */
+	g12b_clkc_restore_pll(&g12b_pm_plls[0]);
+	regmap_write(g12b_pm_map, HHI_SYS_CPUB_CLK_CNTL, g12b_pm_cpub_cntl);
+
+	/* A53 cluster: CPU0 runs on it. Only touch sys1_pll when CPU0 is on the fixed path. */
+	if (cpu & G12B_CPU_FINAL_PLL) {
+		pr_warn("g12b-clkc: CPU0 runs from sys1_pll after resume, not restoring it\n");
+		return;
+	}
+	g12b_clkc_restore_pll(&g12b_pm_plls[1]);
+	if (cpu != g12b_pm_cpu_cntl0)
+		pr_warn("g12b-clkc: A53 clock mux differs after resume (%08x, Linux %08x)\n",
+			cpu, g12b_pm_cpu_cntl0);
+}
+
+static struct syscore_ops g12b_clkc_syscore_ops = {
+	.suspend = g12b_clkc_suspend,
+	.resume = g12b_clkc_resume,
+};
+
+static void g12b_clkc_pm_init(struct platform_device *pdev)
+{
+	if (!of_device_is_compatible(pdev->dev.of_node, "amlogic,g12b-clkc"))
+		return;
+	g12b_pm_map = g12b_sys1_pll_dco.map;
+	if (!g12b_pm_map)
+		return;
+	register_syscore_ops(&g12b_clkc_syscore_ops);
+}
+#else
+static void g12b_clkc_pm_init(struct platform_device *pdev) {}
+#endif
+
 static int meson_g12a_probe(struct platform_device *pdev)
 {
 	const struct meson_eeclkc_data *eeclkc_data;
@@ -5556,6 +5671,8 @@ static int meson_g12a_probe(struct platform_device *pdev)
 
 	g12a_data = container_of(eeclkc_data, struct meson_g12a_data,
 				 eeclkc_data);
+
+	g12b_clkc_pm_init(pdev);
 
 	if (g12a_data->dvfs_setup)
 		return g12a_data->dvfs_setup(pdev);
